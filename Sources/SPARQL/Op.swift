@@ -1,5 +1,5 @@
 
-public indirect enum Op {
+public indirect enum Op: Equatable {
     case identity
     case bgp([Triple])
     case union(Op, Op)

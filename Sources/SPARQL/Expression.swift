@@ -1,5 +1,5 @@
 
-public indirect enum Expression {
+public indirect enum Expression: Equatable {
     case variable(String)
     case literal(Literal)
     case not(Expression)

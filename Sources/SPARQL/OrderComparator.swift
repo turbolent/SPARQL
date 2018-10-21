@@ -1,5 +1,5 @@
 
-public struct OrderComparator {
+public struct OrderComparator: Equatable {
 
     public var order: Order
     public var expression: Expression

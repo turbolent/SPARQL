@@ -1,5 +1,5 @@
 
-public enum Order {
+public enum Order: Equatable {
     case ascending
     case descending
 }
