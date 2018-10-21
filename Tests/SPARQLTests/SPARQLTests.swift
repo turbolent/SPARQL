@@ -6,62 +6,68 @@ final class SPARQLTests: XCTestCase {
 
     func testExample() throws {
         let op =
-            Op.distinct(
-                .project(
-                    ["a"],
-                    .union(
-                        .minus(
-                            .join(
-                                .filter(
-                                    .equals(.variable("a"), .literal(.plain("foo"))),
+            Op.orderBy(
+                .distinct(
+                    .project(
+                        ["a"],
+                        .union(
+                            .minus(
+                                .join(
+                                    .filter(
+                                        .equals(.variable("a"), .literal(.plain("foo"))),
+                                        .bgp([
+                                            Triple(
+                                                subject: .iri("a"),
+                                                predicate: .node(.iri(RDF.type)),
+                                                object: .literal(.withDatatype("1", .integer))
+                                            ),
+                                            Triple(
+                                                subject: .variable("1"),
+                                                predicate: .path(.negated([.forward(RDF.type)])),
+                                                object: .literal(.withLanguage("test", "en"))
+                                            ),
+                                        ])
+                                    ),
                                     .bgp([
                                         Triple(
-                                            subject: .iri("a"),
-                                            predicate: .node(.iri(RDF.type)),
-                                            object: .literal(.withDatatype("1", .integer))
-                                        ),
-                                        Triple(
-                                            subject: .variable("1"),
-                                            predicate: .path(.negated([.forward(RDF.type)])),
-                                            object: .literal(.withLanguage("test", "en"))
-                                        ),
+                                            subject: .variable("a"),
+                                            predicate: .node(.variable("b")),
+                                            object: .variable("c")
+                                        )
                                     ])
                                 ),
                                 .bgp([
                                     Triple(
-                                        subject: .variable("a"),
-                                        predicate: .node(.variable("b")),
-                                        object: .variable("c")
+                                        subject: .iri("x"),
+                                        predicate: .node(.iri("y")),
+                                        object: .iri("z")
                                     )
                                 ])
                             ),
-                            .bgp([
-                                Triple(
-                                    subject: .iri("x"),
-                                    predicate: .node(.iri("y")),
-                                    object: .iri("z")
-                                )
-                            ])
-                        ),
-                        .leftJoin(
-                            .bgp([
-                                Triple(
-                                    subject: .iri("a"),
-                                    predicate: .node(.iri("b")),
-                                    object: .iri("c")
-                                )
-                            ]),
-                            .bgp([
-                                Triple(
-                                    subject: .iri("d"),
-                                    predicate: .node(.iri("e")),
-                                    object: .literal(.withDatatype("1999", .custom(XSD.gYear)))
-                                )
-                            ]),
-                            .literal(.withDatatype("true", .boolean))
+                            .leftJoin(
+                                .bgp([
+                                    Triple(
+                                        subject: .iri("a"),
+                                        predicate: .node(.iri("b")),
+                                        object: .iri("c")
+                                    )
+                                ]),
+                                .bgp([
+                                    Triple(
+                                        subject: .iri("d"),
+                                        predicate: .node(.iri("e")),
+                                        object: .literal(.withDatatype("1999", .custom(XSD.gYear)))
+                                    )
+                                ]),
+                                .literal(.withDatatype("true", .boolean))
+                            )
                         )
                     )
-                )
+                ),
+                [
+                    OrderComparator(order: .ascending, expression: .variable("a")),
+                    OrderComparator(order: .descending, expression: .variable("b")),
+                ]
             )
         let context = Context(prefixMapping: [
             "rdf": RDF.base,
@@ -86,6 +92,7 @@ final class SPARQLTests: XCTestCase {
                 }
               }
             }
+            ORDER BY ASC(?a) DESC(?b)
             """
         diffedAssertEqual(
             result.trimmingCharacters(in: .whitespacesAndNewlines),

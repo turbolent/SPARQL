@@ -9,6 +9,7 @@ public indirect enum Op {
     case join(Op, Op)
     case project([String], Op)
     case distinct(Op)
+    case orderBy(Op, [OrderComparator])
 }
 
 extension Op: SPARQLSerializable {
@@ -117,6 +118,21 @@ extension Op: SPARQLSerializable {
             }
             var result = "DISTINCT "
             result += try op.serializeToSPARQL(depth: depth, context: context)
+            return result
+
+        case let .orderBy(op, orderComparators):
+            guard !orderComparators.isEmpty else {
+                return ""
+            }
+            var result = try op.serializeToSPARQL(depth: depth, context: context)
+            result += indentation
+            result += "ORDER BY "
+            result += try orderComparators
+                .map {
+                    try $0.serializeToSPARQL(depth: 0, context: context)
+                }
+                .joined(separator: " ")
+            result += "\n"
             return result
         }
     }
