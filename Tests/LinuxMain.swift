@@ -3,5 +3,6 @@ import XCTest
 import SPARQLTests
 
 var tests = [XCTestCaseEntry]()
-tests += SPARQLTests.allTests()
+tests += SPARQLTests.__allTests()
+
 XCTMain(tests)
