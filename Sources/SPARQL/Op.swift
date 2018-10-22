@@ -121,8 +121,8 @@ extension Op: SPARQLSerializable {
             return result
 
         case let .orderBy(op, orderComparators):
-            guard !orderComparators.isEmpty else {
-                return ""
+            if orderComparators.isEmpty {
+                return try op.serializeToSPARQL(depth: depth, context: context)
             }
             var result = try op.serializeToSPARQL(depth: depth, context: context)
             result += indentation
