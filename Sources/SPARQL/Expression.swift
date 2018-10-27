@@ -1,7 +1,6 @@
 
 public indirect enum Expression: Equatable {
-    case variable(String)
-    case literal(Literal)
+    case node(Node)
     case not(Expression)
     case and(Expression, Expression)
     case or(Expression, Expression)
@@ -17,11 +16,8 @@ extension Expression: SPARQLSerializable {
 
     public func serializeToSPARQL(depth: Int, context: Context) throws -> String {
         switch self {
-        case let .variable(name):
-            return "?\(name)"
-
-        case let .literal(literal):
-            return literal.serializeToSPARQL(depth: depth, context: context)
+        case let .node(node):
+            return node.serializeToSPARQL(depth: depth, context: context)
 
         case let .not(expression):
             return try expression.serializeToSPARQL(depth: depth, context: context)
@@ -73,7 +69,6 @@ extension Expression: SPARQLSerializable {
                 try $0.serializeToSPARQL(depth: depth, context: context)
             }
             return joinAndGroup(values, separator: " >= ")
-
         }
     }
 }
