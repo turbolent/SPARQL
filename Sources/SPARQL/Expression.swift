@@ -10,6 +10,7 @@ public indirect enum Expression: Equatable {
     case lessThanOrEquals(Expression, Expression)
     case greaterThan(Expression, Expression)
     case greaterThanOrEquals(Expression, Expression)
+    case functionCall(String, [Expression])
 }
 
 extension Expression: SPARQLSerializable {
@@ -69,6 +70,12 @@ extension Expression: SPARQLSerializable {
                 try $0.serializeToSPARQL(depth: depth, context: context)
             }
             return joinAndGroup(values, separator: " >= ")
+
+        case let .functionCall(name, arguments):
+            let serializedArguments = try arguments
+                .map { try $0.serializeToSPARQL(depth: 0, context: context) }
+                .joined(separator: ", ")
+            return "\(name)(\(serializedArguments))"
         }
     }
 }

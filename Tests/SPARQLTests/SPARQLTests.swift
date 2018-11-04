@@ -47,7 +47,10 @@ final class SPARQLTests: XCTestCase {
                                 .minus(
                                     .join(
                                         .filter(
-                                            .equals(.node(.variable("a")), .node(.literal(.plain("foo")))),
+                                            .and(
+                                                .equals(.node(.variable("a")), .node(.literal(.plain("foo")))),
+                                                .not(.functionCall("isIRI", [.node(.variable("a"))]))
+                                            ),
                                             .bgp([
                                                 Triple(
                                                     subject: .iri("a"),
@@ -113,7 +116,7 @@ final class SPARQLTests: XCTestCase {
               {
                 <a> a 1 .
                 ?1 !a "test"@en .
-                FILTER (?a = "foo")
+                FILTER ((?a = "foo") && !isIRI(?a))
                 ?a ?b ?c .
                 MINUS {
                   <x> <y> <z> .
