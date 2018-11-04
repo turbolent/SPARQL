@@ -15,7 +15,7 @@ final class SPARQLTests: XCTestCase {
                                 .minus(
                                     .join(
                                         .filter(
-                                            .equals(.variable("a"), .literal(.plain("foo"))),
+                                            .equals(.node(.variable("a")), .node(.literal(.plain("foo")))),
                                             .bgp([
                                                 Triple(
                                                     subject: .iri("a"),
@@ -60,14 +60,14 @@ final class SPARQLTests: XCTestCase {
                                             object: .literal(.withDatatype("1999", .custom(XSD.gYear)))
                                         )
                                     ]),
-                                    .literal(.withDatatype("true", .boolean))
+                                    .node(.literal(.withDatatype("true", .boolean)))
                                 )
                             )
                         )
                     ),
                     [
-                        OrderComparator(order: .ascending, expression: .variable("a")),
-                        OrderComparator(order: .descending, expression: .variable("b")),
+                        OrderComparator(order: .ascending, expression: .node(.variable("a"))),
+                        OrderComparator(order: .descending, expression: .node(.variable("b"))),
                     ]
                 )
             )
