@@ -280,8 +280,12 @@ final class SPARQLTests: XCTestCase {
                                 object: .literal(.withLanguage("test", "en"))
                             )
                         ]),
-                        ["b"],
-                        ["c": Aggregation(function: .count, distinct: true, variable: "d")]
+                        ["b", "f"],
+                        [
+                            "c": .count(.node(.variable("d")), distinct: true),
+                            "d": .count(nil, distinct: true),
+                            "e": .avg(.node(.variable("x")), distinct: false)
+                        ]
                     )
                 )
             )
@@ -291,10 +295,10 @@ final class SPARQLTests: XCTestCase {
         ])
         let result = try query.serializeToSPARQL(depth: 0, context: context)
         let expected = """
-            SELECT ?a (COUNT(DISTINCT ?d) AS ?c) {
+            SELECT ?a (COUNT(DISTINCT ?d) AS ?c) (COUNT(DISTINCT *) AS ?d) (AVG(?x) AS ?e) {
               ?b <foo> "test"@en .
             }
-            GROUP BY ?b
+            GROUP BY ?b ?f
             """
         diffedAssertEqual(
             expected.trimmingCharacters(in: .whitespacesAndNewlines),

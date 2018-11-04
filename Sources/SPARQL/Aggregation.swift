@@ -1,36 +1,71 @@
 
-public enum AggregateFunction: String, Equatable {
-    case avg
-    case count
-    case sum
-}
+public enum Aggregation: Equatable {
+    case avg(Expression, distinct: Bool)
+    case count(Expression?, distinct: Bool)
+    case min(Expression, distinct: Bool)
+    case max(Expression, distinct: Bool)
+    case sample(Expression, distinct: Bool)
+    case sum(Expression, distinct: Bool)
+    case groupConcat(Expression, distinct: Bool, separator: String?)
 
-public struct Aggregation: Equatable {
-    public var function: AggregateFunction
-    public var distinct: Bool
-    public var variable: String?
+    public var distinct: Bool {
+        switch self {
+        case .avg(_, let distinct),
+            .count(_, let distinct),
+            .min(_, let distinct),
+            .max(_, let distinct),
+            .sample(_, let distinct),
+            .sum(_, let distinct),
+            .groupConcat(_, let distinct, _):
 
-    public init(
-        function: AggregateFunction,
-        distinct: Bool,
-        variable: String?)
-    {
-        self.function = function
-        self.distinct = distinct
-        self.variable = variable
+            return distinct
+        }
+    }
+
+    public var expression: Expression? {
+        switch self {
+        case .count(let expression, _):
+            return expression
+        case .avg(let expression, _),
+            .min(let expression, _),
+            .max(let expression, _),
+            .sample(let expression, _),
+            .sum(let expression, _),
+            .groupConcat(let expression, _, _):
+
+            return expression
+        }
     }
 }
 
 extension Aggregation: SPARQLSerializable {
 
-    public func serializeToSPARQL(depth: Int, context: Context) -> String {
+    private var sparqlFunctionName: String {
+        switch self {
+        case .avg:
+            return "AVG"
+        case .count:
+            return "COUNT"
+        case .min:
+            return "MIN"
+        case .max:
+            return "MAX"
+        case .sample:
+            return "SAMPLE"
+        case .sum:
+            return "SUM"
+        case .groupConcat:
+            return "GROUP_CONCAT"
+        }
+    }
+
+    public func serializeToSPARQL(depth: Int, context: Context) throws -> String {
         var inner = distinct ? "DISTINCT " : ""
-        if let variable = variable {
-            inner += "?\(variable)"
+        if let expression = expression {
+            inner += try expression.serializeToSPARQL(depth: 0, context: context)
         } else {
             inner += "*"
         }
-        let outer = function.rawValue.uppercased()
-        return "\(outer)(\(inner))"
+        return "\(sparqlFunctionName)(\(inner))"
     }
 }

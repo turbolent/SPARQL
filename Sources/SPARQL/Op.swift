@@ -174,10 +174,11 @@ extension Op: SPARQLSerializable {
             throw SPARQLSerializationError.unsupportedChildOp
 
         case let .group(op, groupVars, aggregations):
-            var result = aggregations
+            var result = try aggregations
+                .sorted { $0.key < $1.key }
                 .map {
                     let (name, aggregation) = $0
-                    let serialized = aggregation.serializeToSPARQL(depth: 0, context: context)
+                    let serialized = try aggregation.serializeToSPARQL(depth: 0, context: context)
                     return "(\(serialized) AS ?\(name))"
                 }
                 .joined(separator: " ")
