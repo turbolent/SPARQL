@@ -22,6 +22,10 @@ extension Op: SPARQLSerializable {
     public func serializeToSPARQL(depth: Int, context: Context) throws -> String {
         let indentation = indent(depth: depth)
 
+        func nest(_ serializable: SPARQLSerializable, depth: Int) throws -> String {
+            return try serializable.serializeToSPARQL(depth: depth, context: context)
+        }
+
         switch self {
         case .identity:
             return ""
@@ -30,39 +34,39 @@ extension Op: SPARQLSerializable {
             var result = ""
             for triple in triples {
                 result += indentation
-                result += triple.serializeToSPARQL(depth: depth, context: context)
+                result += try nest(triple, depth: depth)
                 result += "\n"
             }
             return result
 
         case let .union(left, .identity):
-            return try left.serializeToSPARQL(depth: depth, context: context)
+            return try nest(left, depth: depth)
 
         case let .union(.identity, right):
-            return try right.serializeToSPARQL(depth: depth, context: context)
+            return try nest(right, depth: depth)
 
         case let .union(left, right):
             var result = indentation
             result += "{\n"
-            result += try left.serializeToSPARQL(depth: depth + 1, context: context)
+            result += try nest(left, depth: depth + 1)
             result += indentation
             result += "} UNION {\n"
-            result += try right.serializeToSPARQL(depth: depth + 1, context: context)
+            result += try nest(right, depth: depth + 1)
             result += indentation
             result += "}\n"
             return result
 
         case let .minus(left, .identity):
-            return try left.serializeToSPARQL(depth: depth, context: context)
+            return try nest(left, depth: depth)
 
         case let .minus(.identity, right):
-            return try right.serializeToSPARQL(depth: depth, context: context)
+            return try nest(right, depth: depth)
 
         case let .minus(left, right):
-            var result = try left.serializeToSPARQL(depth: depth, context: context)
+            var result = try nest(left, depth: depth)
             result += indentation
             result += "MINUS {\n"
-            result += try right.serializeToSPARQL(depth: depth + 1, context: context)
+            result += try nest(right, depth: depth + 1)
             result += indentation
             result += "}\n"
             return result
@@ -71,22 +75,22 @@ extension Op: SPARQLSerializable {
             return ""
 
         case let .filter(expression, op):
-            var result = try op.serializeToSPARQL(depth: depth, context: context)
+            var result = try nest(op, depth: depth)
             result += indentation
             result += "FILTER "
-            result += try expression.serializeToSPARQL(depth: 0, context: context)
+            result += try nest(expression, depth: 0)
             result += "\n"
             return result
 
         case let .leftJoin(left, right, expression):
-            var result = try left.serializeToSPARQL(depth: depth, context: context)
+            var result = try nest(left, depth: depth)
             result += indentation
             result += "OPTIONAL {\n"
-            result += try right.serializeToSPARQL(depth: depth + 1, context: context)
+            result += try nest(right, depth: depth + 1)
             if let expression = expression {
                 result += indentation
                 result += "  FILTER "
-                result += try expression.serializeToSPARQL(depth: 0, context: context)
+                result += try nest(expression, depth: 0)
                 result += "\n"
             }
             result += indentation
@@ -94,8 +98,9 @@ extension Op: SPARQLSerializable {
             return result
 
         case let .join(left, right):
-            return (try left.serializeToSPARQL(depth: depth, context: context))
-                + (try right.serializeToSPARQL(depth: depth, context: context))
+            var result = try nest(left, depth: depth)
+            result += try nest(right, depth: depth)
+            return result
 
         case let .project(variables, op):
             var result = ""
@@ -107,7 +112,7 @@ extension Op: SPARQLSerializable {
                     .joined(separator: " ")
             }
             result += " {\n"
-            result += try op.serializeToSPARQL(depth: depth + 1, context: context)
+            result += try nest(op, depth: depth + 1)
             result += indentation
             result += "}\n"
             return result
@@ -116,7 +121,7 @@ extension Op: SPARQLSerializable {
             where op.isValidDistinctChild:
 
             var result = "DISTINCT "
-            result += try op.serializeToSPARQL(depth: depth, context: context)
+            result += try nest(op, depth: depth)
             return result
 
         case .distinct:
@@ -127,15 +132,13 @@ extension Op: SPARQLSerializable {
             where op.isValidOrderByChild:
 
             if orderComparators.isEmpty {
-                return try op.serializeToSPARQL(depth: depth, context: context)
+                return try nest(op, depth: depth)
             }
-            var result = try op.serializeToSPARQL(depth: depth, context: context)
+            var result = try nest(op, depth: depth)
             result += indentation
             result += "ORDER BY "
             result += try orderComparators
-                .map {
-                    try $0.serializeToSPARQL(depth: 0, context: context)
-                }
+                .map { try nest($0, depth: 0) }
                 .joined(separator: " ")
             result += "\n"
             return result
@@ -164,3 +167,4 @@ extension Op: SPARQLSerializable {
         }
     }
 }
+
