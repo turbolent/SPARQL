@@ -2,7 +2,11 @@ import XCTest
 
 extension SPARQLTests {
     static let __allTests = [
-        ("testExample", testExample),
+        ("testBasic", testBasic),
+        ("testComplex", testComplex),
+        ("testNestedDirectProject", testNestedDirectProject),
+        ("testNestedDistinct", testNestedDistinct),
+        ("testNestedProject", testNestedProject),
     ]
 }
 

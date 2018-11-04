@@ -4,7 +4,39 @@ import DiffedAssertEqual
 
 final class SPARQLTests: XCTestCase {
 
-    func testExample() throws {
+    func testBasic() throws {
+        let query =
+            Query(op:
+                .project(
+                    ["a"],
+                    .bgp([
+                        Triple(
+                            subject: .iri("a"),
+                            predicate: .node(.iri(RDF.type)),
+                            object: .literal(.withDatatype("1", .integer))
+                        ),
+                    ])
+                )
+            )
+        let context = Context(prefixMapping: [
+            "rdf": RDF.base,
+            "xsd": XSD.base,
+        ])
+        let result = try query.serializeToSPARQL(depth: 0, context: context)
+        let expected = """
+            SELECT ?a {
+              <a> a 1 .
+            }
+
+            """
+        diffedAssertEqual(
+            expected.trimmingCharacters(in: .whitespacesAndNewlines),
+            result.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+
+    }
+
+    func testComplex() throws {
         let query =
             Query(op:
                 .orderBy(
@@ -97,8 +129,142 @@ final class SPARQLTests: XCTestCase {
             ORDER BY ASC(?a) DESC(?b)
             """
         diffedAssertEqual(
-            result.trimmingCharacters(in: .whitespacesAndNewlines),
-            expected.trimmingCharacters(in: .whitespacesAndNewlines)
+            expected.trimmingCharacters(in: .whitespacesAndNewlines),
+            result.trimmingCharacters(in: .whitespacesAndNewlines)
         )
     }
+
+    func testNestedProject() throws {
+        let query =
+            Query(op:
+                .project(
+                    ["a"],
+                    .join(
+                        .project(
+                            ["b"],
+                            .bgp([
+                                Triple(
+                                    subject: .variable("b"),
+                                    predicate: .node(.iri("foo")),
+                                    object: .literal(.withLanguage("test", "en"))
+                                )
+                            ])
+                        ),
+                        .bgp([
+                            Triple(
+                                subject: .variable("a"),
+                                predicate: .node(.iri("bar")),
+                                object: .literal(.withDatatype("1", .integer))
+                            )
+                        ])
+                    )
+                )
+            )
+        let context = Context(prefixMapping: [
+            "rdf": RDF.base,
+            "xsd": XSD.base,
+        ])
+        let result = try query.serializeToSPARQL(depth: 0, context: context)
+        let expected = """
+            SELECT ?a {
+              {
+                SELECT ?b {
+                  ?b <foo> "test"@en .
+                }
+              }
+              ?a <bar> 1 .
+            }
+            """
+        diffedAssertEqual(
+            expected.trimmingCharacters(in: .whitespacesAndNewlines),
+            result.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+    }
+
+    func testNestedDistinct() throws {
+        let query =
+            Query(op:
+                .project(
+                    ["a"],
+                    .join(
+                        .distinct(
+                            .project(
+                                ["b"],
+                                .bgp([
+                                    Triple(
+                                        subject: .variable("b"),
+                                        predicate: .node(.iri("foo")),
+                                        object: .literal(.withLanguage("test", "en"))
+                                    )
+                                ])
+                            )
+                        ),
+                        .bgp([
+                            Triple(
+                                subject: .variable("a"),
+                                predicate: .node(.iri("bar")),
+                                object: .literal(.withDatatype("1", .integer))
+                            )
+                        ])
+                    )
+                )
+            )
+        let context = Context(prefixMapping: [
+            "rdf": RDF.base,
+            "xsd": XSD.base,
+        ])
+        let result = try query.serializeToSPARQL(depth: 0, context: context)
+        let expected = """
+            SELECT ?a {
+              {
+                SELECT DISTINCT ?b {
+                  ?b <foo> "test"@en .
+                }
+              }
+              ?a <bar> 1 .
+            }
+            """
+        diffedAssertEqual(
+            expected.trimmingCharacters(in: .whitespacesAndNewlines),
+            result.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+    }
+
+    func testNestedDirectProject() throws {
+        let query =
+            Query(op:
+                .project(
+                    ["a"],
+                    .project(
+                        ["b"],
+                        .bgp([
+                            Triple(
+                                subject: .variable("b"),
+                                predicate: .node(.iri("foo")),
+                                object: .literal(.withLanguage("test", "en"))
+                            )
+                        ])
+                    )
+                )
+            )
+        let context = Context(prefixMapping: [
+            "rdf": RDF.base,
+            "xsd": XSD.base,
+        ])
+        let result = try query.serializeToSPARQL(depth: 0, context: context)
+        let expected = """
+            SELECT ?a {
+              {
+                SELECT ?b {
+                  ?b <foo> "test"@en .
+                }
+              }
+            }
+            """
+        diffedAssertEqual(
+            expected.trimmingCharacters(in: .whitespacesAndNewlines),
+            result.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+    }
+
 }

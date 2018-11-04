@@ -22,8 +22,24 @@ extension Op: SPARQLSerializable {
     public func serializeToSPARQL(depth: Int, context: Context) throws -> String {
         let indentation = indent(depth: depth)
 
-        func nest(_ serializable: SPARQLSerializable, depth: Int) throws -> String {
-            return try serializable.serializeToSPARQL(depth: depth, context: context)
+        func nest(_ nested: SPARQLSerializable, depth: Int) throws -> String {
+            var depth = depth
+            var result = ""
+            let isSubquery = self.isSubquery(nested)
+            let indentation = indent(depth: depth)
+            if isSubquery {
+                result += indentation
+                result += "{\n"
+                result += indentation
+                result += "  SELECT "
+                depth += 1
+            }
+            result += try nested.serializeToSPARQL(depth: depth, context: context)
+            if isSubquery {
+                result += indentation
+                result += "}\n"
+            }
+            return result
         }
 
         switch self {
@@ -165,6 +181,29 @@ extension Op: SPARQLSerializable {
         default:
             return false
         }
+    }
+
+    public var isProjectModifier: Bool {
+        switch self {
+        case .distinct, .orderBy:
+            return true
+        default:
+            return false
+        }
+    }
+
+    public func isSubquery(_ nested: SPARQLSerializable) -> Bool {
+        if !isProjectModifier {
+            if case Op.project = nested {
+                return true
+            } else if let nestedOp = nested as? Op,
+                nestedOp.isProjectModifier
+            {
+                return true
+            }
+        }
+
+        return false
     }
 }
 

@@ -7,8 +7,8 @@ public struct Query: Equatable {
     }
 }
 
-// TODO: how do we allow subqueries?
 extension Query: SPARQLSerializable {
+
     public func serializeToSPARQL(depth: Int, context: Context) throws -> String {
         let indentation = indent(depth: depth)
         var result = indentation
