@@ -101,8 +101,4 @@ final class SPARQLTests: XCTestCase {
             expected.trimmingCharacters(in: .whitespacesAndNewlines)
         )
     }
-
-    static var allTests = [
-        ("testExample", testExample),
-    ]
 }
