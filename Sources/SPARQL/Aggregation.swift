@@ -66,6 +66,11 @@ extension Aggregation: SPARQLSerializable {
         } else {
             inner += "*"
         }
+        if case let .groupConcat(_, _, separator?) = self {
+            let escapedSeparator = separator
+                .replacingOccurrences(of:"\"", with: "\\\"")
+            inner += "; SEPARATOR=\"\(escapedSeparator)\""
+        }
         return "\(sparqlFunctionName)(\(inner))"
     }
 }

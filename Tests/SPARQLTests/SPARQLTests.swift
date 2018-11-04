@@ -284,7 +284,7 @@ final class SPARQLTests: XCTestCase {
                         [
                             "c": .count(.node(.variable("d")), distinct: true),
                             "d": .count(nil, distinct: true),
-                            "e": .avg(.node(.variable("x")), distinct: false)
+                            "e": .groupConcat(.node(.variable("x")), distinct: false, separator: "|")
                         ]
                     )
                 )
@@ -295,7 +295,7 @@ final class SPARQLTests: XCTestCase {
         ])
         let result = try query.serializeToSPARQL(depth: 0, context: context)
         let expected = """
-            SELECT ?a (COUNT(DISTINCT ?d) AS ?c) (COUNT(DISTINCT *) AS ?d) (AVG(?x) AS ?e) {
+            SELECT ?a (COUNT(DISTINCT ?d) AS ?c) (COUNT(DISTINCT *) AS ?d) (GROUP_CONCAT(?x; SEPARATOR="|") AS ?e) {
               ?b <foo> "test"@en .
             }
             GROUP BY ?b ?f
