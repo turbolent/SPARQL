@@ -267,4 +267,38 @@ final class SPARQLTests: XCTestCase {
         )
     }
 
+    func testGroup() throws {
+        let query =
+            Query(op:
+                .project(
+                    ["a"],
+                    .group(
+                        .bgp([
+                            Triple(
+                                subject: .variable("b"),
+                                predicate: .node(.iri("foo")),
+                                object: .literal(.withLanguage("test", "en"))
+                            )
+                        ]),
+                        ["b"],
+                        ["c": Aggregation(function: .count, distinct: true, variable: "d")]
+                    )
+                )
+            )
+        let context = Context(prefixMapping: [
+            "rdf": RDF.base,
+            "xsd": XSD.base,
+        ])
+        let result = try query.serializeToSPARQL(depth: 0, context: context)
+        let expected = """
+            SELECT ?a (COUNT(DISTINCT ?d) AS ?c) {
+              ?b <foo> "test"@en .
+            }
+            GROUP BY ?b
+            """
+        diffedAssertEqual(
+            expected.trimmingCharacters(in: .whitespacesAndNewlines),
+            result.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+    }
 }

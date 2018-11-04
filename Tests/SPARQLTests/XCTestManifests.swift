@@ -4,6 +4,7 @@ extension SPARQLTests {
     static let __allTests = [
         ("testBasic", testBasic),
         ("testComplex", testComplex),
+        ("testGroup", testGroup),
         ("testNestedDirectProject", testNestedDirectProject),
         ("testNestedDistinct", testNestedDistinct),
         ("testNestedProject", testNestedProject),

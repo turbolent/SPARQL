@@ -10,6 +10,7 @@ public indirect enum Op: Equatable {
     case project([String], Op)
     case distinct(Op)
     case orderBy(Op, [OrderComparator])
+    case group(Op, [String], [String: Aggregation])
 }
 
 extension Op: SPARQLSerializable {
@@ -120,6 +121,7 @@ extension Op: SPARQLSerializable {
 
         case let .project(variables, op):
             var result = ""
+
             if variables.isEmpty {
                 result += "*"
             } else {
@@ -127,10 +129,18 @@ extension Op: SPARQLSerializable {
                     .map { name in "?\(name)" }
                     .joined(separator: " ")
             }
-            result += " {\n"
-            result += try nest(op, depth: depth + 1)
-            result += indentation
-            result += "}\n"
+
+            // if child op is group, it will add the block
+            if case .group = op {
+                result += " "
+                result += try nest(op, depth: depth)
+            } else {
+                result += " {\n"
+                result += try nest(op, depth: depth + 1)
+                result += indentation
+                result += "}\n"
+            }
+
             return result
 
         case let .distinct(op)
@@ -147,10 +157,10 @@ extension Op: SPARQLSerializable {
         case let .orderBy(op, orderComparators)
             where op.isValidOrderByChild:
 
-            if orderComparators.isEmpty {
-                return try nest(op, depth: depth)
-            }
             var result = try nest(op, depth: depth)
+            if orderComparators.isEmpty {
+                return result
+            }
             result += indentation
             result += "ORDER BY "
             result += try orderComparators
@@ -162,6 +172,31 @@ extension Op: SPARQLSerializable {
         case .orderBy:
             // fall-through for orderBy child ops which are invalid
             throw SPARQLSerializationError.unsupportedChildOp
+
+        case let .group(op, groupVars, aggregations):
+            var result = aggregations
+                .map {
+                    let (name, aggregation) = $0
+                    let serialized = aggregation.serializeToSPARQL(depth: 0, context: context)
+                    return "(\(serialized) AS ?\(name))"
+                }
+                .joined(separator: " ")
+            result += " {\n"
+            result += try nest(op, depth: depth + 1)
+            result += indentation
+            result += "}\n"
+
+            if !groupVars.isEmpty {
+                result += indentation
+                result += "GROUP BY "
+                result += groupVars
+                    .map { name in "?\(name)" }
+                    .joined(separator: " ")
+            }
+            result += "\n"
+            return result
+
+
         }
     }
 
@@ -203,6 +238,13 @@ extension Op: SPARQLSerializable {
             }
         }
 
+        return false
+    }
+
+    public var isValidGroupChild: Bool {
+        if case .project = self {
+            return true
+        }
         return false
     }
 }
