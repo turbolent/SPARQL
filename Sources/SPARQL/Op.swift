@@ -112,15 +112,20 @@ extension Op: SPARQLSerializable {
             result += "}\n"
             return result
 
-        case let .distinct(op):
-            guard case .project = op else {
-                throw SPARQLSerializationError.unsupportedChildOp
-            }
+        case let .distinct(op)
+            where op.isValidDistinctChild:
+
             var result = "DISTINCT "
             result += try op.serializeToSPARQL(depth: depth, context: context)
             return result
 
-        case let .orderBy(op, orderComparators):
+        case .distinct:
+            // fall-through for distinct child ops which are invalid
+            throw SPARQLSerializationError.unsupportedChildOp
+
+        case let .orderBy(op, orderComparators)
+            where op.isValidOrderByChild:
+
             if orderComparators.isEmpty {
                 return try op.serializeToSPARQL(depth: depth, context: context)
             }
@@ -134,6 +139,28 @@ extension Op: SPARQLSerializable {
                 .joined(separator: " ")
             result += "\n"
             return result
+
+        case .orderBy:
+            // fall-through for orderBy child ops which are invalid
+            throw SPARQLSerializationError.unsupportedChildOp
+        }
+    }
+
+    public var isValidDistinctChild: Bool {
+        switch self {
+        case .project, .orderBy:
+            return true
+        default:
+            return false
+        }
+    }
+
+    public var isValidOrderByChild: Bool {
+        switch self {
+        case .project, .distinct:
+            return true
+        default:
+            return false
         }
     }
 }
