@@ -20,7 +20,7 @@ extension Expression: SPARQLSerializable {
             return node.serializeToSPARQL(depth: depth, context: context)
 
         case let .not(expression):
-            return try expression.serializeToSPARQL(depth: depth, context: context)
+            return "!" + (try expression.serializeToSPARQL(depth: depth, context: context))
 
         case let .and(left, right):
             let values = try [left, right].map {
