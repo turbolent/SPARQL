@@ -1,16 +1,18 @@
 
+// possible nesting: distinct? project orderBy? filter? group?
+
 public indirect enum Op: Equatable {
     case identity
+    case distinct(Op)
+    case project([String], Op)
+    case orderBy(Op, [OrderComparator])
+    case filter(Expression, Op)
+    case group(Op, [String], [String: Aggregation])
     case bgp([Triple])
     case union(Op, Op)
     case minus(Op, Op)
-    case filter(Expression, Op)
     case leftJoin(Op, Op, Expression?)
     case join(Op, Op)
-    case project([String], Op)
-    case distinct(Op)
-    case orderBy(Op, [OrderComparator])
-    case group(Op, [String], [String: Aggregation])
 }
 
 extension Op: SPARQLSerializable {
@@ -26,7 +28,10 @@ extension Op: SPARQLSerializable {
         func nest(_ nested: SPARQLSerializable, depth: Int) throws -> String {
             var depth = depth
             var result = ""
-            let isSubquery = self.isSubquery(nested)
+            let nestedOp = nested as? Op
+            let isSubquery = nestedOp
+                .map { self.isSubquery(nested: $0) }
+                ?? false
             let indentation = indent(depth: depth)
             if isSubquery {
                 result += indentation
@@ -35,7 +40,28 @@ extension Op: SPARQLSerializable {
                 result += "  SELECT "
                 depth += 1
             }
-            result += try nested.serializeToSPARQL(depth: depth, context: context)
+
+            if nestedOp?.isHaving(parent: self) ?? false,
+                case let .filter(expression, op)? = nestedOp
+            {
+                // if child op is group it will add the block
+                switch op {
+                case .group:
+                    result += try nest(op, depth: depth)
+                default:
+                    result += " {\n"
+                    result += try nest(op, depth: depth + 1)
+                    result += indentation
+                    result += "}\n"
+                }
+                result += indentation
+                result += "HAVING "
+                result += try nest(expression, depth: 0)
+                result += "\n"
+            } else {
+                result += try nested.serializeToSPARQL(depth: depth, context: context)
+            }
+
             if isSubquery {
                 result += indentation
                 result += "}\n"
@@ -130,11 +156,11 @@ extension Op: SPARQLSerializable {
                     .joined(separator: " ")
             }
 
-            // if child op is group, it will add the block
-            if case .group = op {
-                result += " "
+            // if child op is group, filter, or order by, it will add the block
+            switch op {
+            case .group, .filter, .orderBy:
                 result += try nest(op, depth: depth)
-            } else {
+            default:
                 result += " {\n"
                 result += try nest(op, depth: depth + 1)
                 result += indentation
@@ -154,10 +180,20 @@ extension Op: SPARQLSerializable {
             // fall-through for distinct child ops which are invalid
             throw SPARQLSerializationError.unsupportedChildOp
 
-        case let .orderBy(op, orderComparators)
-            where op.isValidOrderByChild:
+        case let .orderBy(op, orderComparators):
+            var result = ""
 
-            var result = try nest(op, depth: depth)
+            // if child op is filter or group, it will add the block
+            switch op {
+            case .filter, .group:
+                result += try nest(op, depth: depth)
+            default:
+                result += " {\n"
+                result += try nest(op, depth: depth + 1)
+                result += indentation
+                result += "}\n"
+            }
+
             if orderComparators.isEmpty {
                 return result
             }
@@ -169,23 +205,26 @@ extension Op: SPARQLSerializable {
             result += "\n"
             return result
 
-        case .orderBy:
-            // fall-through for orderBy child ops which are invalid
-            throw SPARQLSerializationError.unsupportedChildOp
-
         case let .group(op, groupVars, aggregations):
             var result = try aggregations
                 .sorted { $0.key < $1.key }
                 .map {
                     let (name, aggregation) = $0
-                    let serialized = try aggregation.serializeToSPARQL(depth: 0, context: context)
-                    return "(\(serialized) AS ?\(name))"
+                    let serialized = try nest(aggregation, depth: 0)
+                    return " (\(serialized) AS ?\(name))"
                 }
-                .joined(separator: " ")
-            result += " {\n"
-            result += try nest(op, depth: depth + 1)
-            result += indentation
-            result += "}\n"
+                .joined()
+
+            // if child op is filter or order by, it will add the block
+            switch op {
+            case .filter, .orderBy:
+                result += try nest(op, depth: depth)
+            default:
+                result += " {\n"
+                result += try nest(op, depth: depth + 1)
+                result += indentation
+                result += "}\n"
+            }
 
             if !groupVars.isEmpty {
                 result += indentation
@@ -196,57 +235,44 @@ extension Op: SPARQLSerializable {
             }
             result += "\n"
             return result
-
-
         }
     }
 
     public var isValidDistinctChild: Bool {
+        guard case .project = self else {
+            return false
+        }
+        return true
+    }
+
+    public var isQuery: Bool {
         switch self {
-        case .project, .orderBy:
+        case .distinct, .project:
             return true
         default:
             return false
         }
     }
 
-    public var isValidOrderByChild: Bool {
+    public func isSubquery(nested: Op) -> Bool {
         switch self {
-        case .project, .distinct:
+        case .distinct:
+            return false
+        default:
+            return nested.isQuery
+        }
+    }
+
+    public func isHaving(parent: Op) -> Bool {
+        guard case .filter = self else {
+            return false
+        }
+        switch parent {
+        case .orderBy, .project:
             return true
         default:
             return false
         }
-    }
-
-    public var isProjectModifier: Bool {
-        switch self {
-        case .distinct, .orderBy:
-            return true
-        default:
-            return false
-        }
-    }
-
-    public func isSubquery(_ nested: SPARQLSerializable) -> Bool {
-        if !isProjectModifier {
-            if case Op.project = nested {
-                return true
-            } else if let nestedOp = nested as? Op,
-                nestedOp.isProjectModifier
-            {
-                return true
-            }
-        }
-
-        return false
-    }
-
-    public var isValidGroupChild: Bool {
-        if case .project = self {
-            return true
-        }
-        return false
     }
 }
 
