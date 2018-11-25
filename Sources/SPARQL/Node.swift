@@ -4,6 +4,14 @@ public enum Node: Equatable {
     case blank(String)
     case iri(String)
     case literal(Literal)
+
+    public static var `true`: Node {
+        return .literal(.withDatatype("true", Datatype.boolean))
+    }
+
+    public static var `false`: Node {
+        return .literal(.withDatatype("false", Datatype.boolean))
+    }
 }
 
 extension Node: CustomStringConvertible {
