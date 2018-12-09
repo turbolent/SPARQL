@@ -1,5 +1,5 @@
 
-public indirect enum Expression: Equatable {
+public indirect enum Expression: Hashable {
     case node(Node)
     case not(Expression)
     case and(Expression, Expression)

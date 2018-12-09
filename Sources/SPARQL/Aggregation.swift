@@ -1,5 +1,5 @@
 
-public enum Aggregation: Equatable {
+public enum Aggregation: Hashable {
     case avg(Expression, distinct: Bool)
     case count(Expression?, distinct: Bool)
     case min(Expression, distinct: Bool)

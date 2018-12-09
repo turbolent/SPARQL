@@ -1,5 +1,5 @@
 
-public enum Datatype: Equatable {
+public enum Datatype: Hashable {
     case string
     case boolean
     case integer

@@ -1,7 +1,7 @@
 
 import Foundation
 
-public enum Literal: Equatable {
+public enum Literal: Hashable {
     case plain(String)
     case withLanguage(String, String)
     case withDatatype(String, Datatype)

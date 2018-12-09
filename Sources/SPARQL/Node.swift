@@ -1,5 +1,5 @@
 
-public enum Node: Equatable {
+public enum Node: Hashable {
     case variable(String)
     case blank(String)
     case iri(String)
