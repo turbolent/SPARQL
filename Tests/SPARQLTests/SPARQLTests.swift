@@ -36,7 +36,7 @@ final class SPARQLTests: XCTestCase {
 
     }
 
-    func testProjectFilterIsHaving() throws {
+    func testProjectFilterIsNotHaving() throws {
         let query =
             Query(op:
                 .project(
@@ -61,8 +61,8 @@ final class SPARQLTests: XCTestCase {
         let expected = """
             SELECT ?a {
               ?a a 1 .
+              FILTER (?a = true)
             }
-            HAVING (?a = true)
 
             """
         diffedAssertEqual(

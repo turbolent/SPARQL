@@ -156,9 +156,10 @@ extension Op: SPARQLSerializable {
                     .joined(separator: " ")
             }
 
-            // if child op is group, filter, or order by, it will add the block
+            // if child op is a filter which will result in a HAVING clause, a group, or an order by,
+            // it will add the block
             switch op {
-            case .group, .filter, .orderBy:
+            case .filter where op.isHaving(parent: self), .group, .orderBy:
                 result += try nest(op, depth: depth)
             default:
                 result += " {\n"
@@ -183,9 +184,9 @@ extension Op: SPARQLSerializable {
         case let .orderBy(op, orderComparators):
             var result = ""
 
-            // if child op is filter or group, it will add the block
+            // if child op is filter which will result in a HAVING clause, or a group, it will add the block
             switch op {
-            case .filter, .group:
+            case .filter where op.isHaving(parent: self), .group:
                 result += try nest(op, depth: depth)
             default:
                 result += " {\n"
@@ -215,9 +216,10 @@ extension Op: SPARQLSerializable {
                 }
                 .joined()
 
-            // if child op is filter or order by, it will add the block
+            // if child op is filter which will result in a HAVING clause, or an order by,
+            // it will add the block
             switch op {
-            case .filter, .orderBy:
+            case .filter where op.isHaving(parent: self), .orderBy:
                 result += try nest(op, depth: depth)
             default:
                 result += " {\n"
@@ -264,11 +266,14 @@ extension Op: SPARQLSerializable {
     }
 
     public func isHaving(parent: Op) -> Bool {
-        guard case .filter = self else {
+        guard case let .filter(_, child) = self else {
             return false
         }
         switch parent {
         case .orderBy, .project:
+            guard case .group = child else {
+                return false
+            }
             return true
         default:
             return false
