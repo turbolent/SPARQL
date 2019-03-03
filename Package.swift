@@ -7,17 +7,20 @@ let package = Package(
     products: [
         .library(
             name: "SPARQL",
-            targets: ["SPARQL"]),
+            targets: ["SPARQL"]
+        ),
     ],
     dependencies: [
-        .package(url: "https://github.com/turbolent/DiffedAssertEqual.git", .branch("master")),
+        .package(url: "https://github.com/turbolent/DiffedAssertEqual.git", from: "0.1.0"),
     ],
     targets: [
         .target(
             name: "SPARQL",
-            dependencies: []),
+            dependencies: []
+        ),
         .testTarget(
             name: "SPARQLTests",
-            dependencies: ["SPARQL", "DiffedAssertEqual"]),
+            dependencies: ["SPARQL", "DiffedAssertEqual"]
+        ),
     ]
 )
